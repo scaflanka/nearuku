@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "542945576392",
+    "project_id": "neuru002",
+    "storage_bucket": "neuru002.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:542945576392:android:3cc179243d0db80e656cfd",
+        "android_client_info": {
+          "package_name": "com.nearu.appt"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjx0O-I0GgXzLWN4ROWFAB7Z09rPGBcOM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

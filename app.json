@@ -1,0 +1,133 @@
+{
+  "expo": {
+    "name": "Nearu",
+    "slug": "Nearu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo/launcherIcon.png",
+    "scheme": "nearu",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.nearu.appt",
+      "supportsTablet": true,
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ],
+        "NSLocationWhenInUseUsageDescription": "Nearu needs access to your location to show you on the map and share it with your circles.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Nearu needs access to your location in the background to keep your circles updated even when the app is closed.",
+        "NSLocationAlwaysUsageDescription": "Nearu needs access to your location in the background to provide real-time updates to your circle members.",
+        "NSCameraUsageDescription": "Nearu needs access to your camera to take profile photos and place images.",
+        "NSPhotoLibraryUsageDescription": "Nearu needs access to your photo library to let you choose profile and place images.",
+        "NSContactsUsageDescription": "Nearu needs access to your contacts to let you add them as emergency contacts.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.344292197283-colf5qfpl7fassofc62bks8vka6qf8kq"
+            ]
+          }
+        ]
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyBoqhQWOBssPSZpeWLuVEiaqF0Qzu2oQqk"
+      }
+    },
+    "android": {
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBoqhQWOBssPSZpeWLuVEiaqF0Qzu2oQqk"
+        }
+      },
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/logo/launcherIcon.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.nearu.appt",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "CAMERA",
+        "READ_CONTACTS",
+        "WRITE_CONTACTS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "android.permission.CAMERA",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/logo/launcherIcon.png"
+    },
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Nearu to access your camera to take profile photos."
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsImpl": "mapbox",
+          "RNMapboxMapsVersion": "10.16.3"
+        }
+      ],
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logo/image.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      "expo-contacts",
+      "./plugins/withBootReceiver"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ae5c656f-ee39-41f4-9be1-32090b1f9d4a"
+      }
+    }
+  }
+}

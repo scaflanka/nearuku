@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"Stripe\\\\|stripe\\\\|RevenueCat\\\\|revenucat\\\\|IAP\\\\|inapp\")",
+      "Bash(Get-Content *)",
+      "Bash(xargs grep -l \"API_BASE_URL\")",
+      "Bash(xargs grep -l \"stripe\\\\|revenucat\\\\|payment\" -i)",
+      "Bash(node *)",
+      "Bash(npm install *)",
+      "Bash(git stash *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+App bundle name: com.nearu.appt
+Keystore: android/app/my-release-key.keystore
+Alias: my-key-alias
+
+SHA1:
+97:5E:2A:07:2A:80:6B:FB:B8:B6:F1:C2:F8:04:1E:36:40:10:A7:1F
+
+SHA256:
+B6:E8:A5:39:24:8B:21:69:27:5E:D1:1F:83:7F:BD:C0:BC:22:73:23:AA:1F:C5:C4:35:15:E1:5E:6E:07:12:08
