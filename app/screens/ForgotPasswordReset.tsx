@@ -2,7 +2,8 @@ import { API_BASE_URL } from '@/utils/constants';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput } from '@/components/CustomText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext'; // Added
 

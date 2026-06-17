@@ -2,17 +2,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 import { API_BASE_URL } from "@/utils/constants";
-import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/CustomText";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
     // API_BASE_URL,

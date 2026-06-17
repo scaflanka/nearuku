@@ -1,16 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/CustomText";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const COLORS = {

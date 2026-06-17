@@ -10,10 +10,10 @@ import {
     NativeSyntheticEvent,
     StatusBar,
     StyleSheet,
-    Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Text } from '@/components/CustomText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');

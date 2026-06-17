@@ -1,16 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-    Alert,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    ToastAndroid,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { Alert, Modal, Platform, ScrollView, StyleSheet, ToastAndroid, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
+import { t } from "@/utils/i18n";
 import CustomSwitch from "../../components/CustomSwitch";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {authenticatedFetch } from "../../../utils/auth";
@@ -138,7 +130,7 @@ const SmartNotificationModal: React.FC<SmartNotificationModalProps> = ({
             }
 
             if (Platform.OS === 'android') {
-                ToastAndroid.show("Settings updated", ToastAndroid.SHORT);
+                ToastAndroid.show(t("Settings updated"), ToastAndroid.SHORT);
             }
 
             if (onSettingsChanged) {
@@ -146,7 +138,7 @@ const SmartNotificationModal: React.FC<SmartNotificationModalProps> = ({
             }
         } catch (error: any) {
             console.error("Failed to update settings", error);
-            Alert.alert("Error", error.message || "Failed to update settings.");
+            Alert.alert(t("Error"), t(error.message || "Failed to update settings."));
         }
     };
 

@@ -6,11 +6,10 @@ import {
     ActivityIndicator,
     ScrollView,
     StyleSheet,
-    Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
+import { Text, TextInput } from '@/components/CustomText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_PROMPT = 'Enter the verification code sent to your email.';

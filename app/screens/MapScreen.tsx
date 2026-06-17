@@ -21,15 +21,18 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
+import { Text, TextInput } from '@/components/CustomText';
 
 import Mapbox from "@rnmapbox/maps";
+import { canRenderMapbox, getMapboxToken } from "../../utils/mapHelper";
+import { MapFallback } from "../../components/MapFallback";
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "");
+if (canRenderMapbox()) {
+  Mapbox.setAccessToken(getMapboxToken());
+}
 const turfCircle = require('@turf/circle').default;
 const { point } = require('@turf/helpers');
 
@@ -5686,6 +5689,16 @@ const MapScreen: React.FC = () => {
       });
       return;
     }
+    
+    // Explicitly move the camera to the user's coordinates
+    if (cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [locationRef.current.longitude, locationRef.current.latitude],
+        zoomLevel: 15,
+        animationDuration: 1200,
+      });
+    }
+
     // Toggle followUserLocation off then on to re-engage native follow mode after user panning
     setIsFollowingUser(false);
     setTimeout(() => setIsFollowingUser(true), 50);
@@ -6555,93 +6568,108 @@ const MapScreen: React.FC = () => {
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
         {/* --- MAP LAYER --- */}
-        <Mapbox.MapView
-          ref={mapRef}
-          style={[styles.map, { paddingBottom: MIN_HEIGHT }]}
-          styleURL={mapLayerStyle === 'satellite' ? Mapbox.StyleURL.Satellite : mapLayerStyle === 'hybrid' ? Mapbox.StyleURL.SatelliteStreet : Mapbox.StyleURL.Street}
-          logoEnabled={false}
-          compassEnabled={false}
-          scaleBarEnabled={false}
-          onRegionIsChanging={syncMarkerPositions}
-          onRegionDidChange={(e: any) => {
-            syncMarkerPositions();
-          }}
-        >
-          <Mapbox.Camera
-            ref={cameraRef}
-            followZoomLevel={14}
-            followUserLocation={isFollowingUser}
-            followUserMode={Mapbox.UserTrackingMode.Follow}
-            animationDuration={1000}
-          />
-          <Mapbox.UserLocation
-            visible={true}
-            renderMode={Mapbox.UserLocationRenderMode.Normal}
-            showsUserHeadingIndicator={true}
-            onUpdate={(loc: any) => {
-              if (!loc || !loc.coords) return;
-              const { latitude, longitude, speed, accuracy, heading } = loc.coords;
-
-              const nextLocation: UserLocation = {
-                latitude,
-                longitude,
-                heading: heading ?? undefined,
-                accuracy: Number.isFinite(accuracy) ? accuracy ?? null : null,
-              };
-
-              // Update local state for Mapbox Camera and Circle overlays
-              setLocation(nextLocation);
-              locationRef.current = nextLocation;
-
-              // Calculate and update raw speed in km/h directly from Mapbox API
-              const kmh = speed !== null && speed !== undefined ? Math.max(0, speed * 3.6) : 0;
-              setCurrentSpeed(kmh);
-
-              // Synchronize location update with backend in real-time
-              if (activeCircleIdRef.current) {
-                 maybePostCircleLocationUpdate(activeCircleIdRef.current, {
-                    latitude,
-                    longitude,
-                    accuracy: accuracy ?? null,
-                    speed: speed ?? null,
-                    userId: currentUserId,
-                    battery: currentUserBatteryLevel ? `${currentUserBatteryLevel.batteryLevel}%` : undefined,
-                 }).then(result => {
-                    if (result.success && result.data) {
-                       handleLiveStatusUpdate(result.data);
-                    }
-                 }).catch(err => console.warn("Foreground Mapbox sync failed", err));
-              }
+        {canRenderMapbox() ? (
+          <Mapbox.MapView
+            ref={mapRef}
+            style={[styles.map, { paddingBottom: MIN_HEIGHT }]}
+            styleURL={mapLayerStyle === 'satellite' ? Mapbox.StyleURL.Satellite : mapLayerStyle === 'hybrid' ? Mapbox.StyleURL.SatelliteStreet : Mapbox.StyleURL.Street}
+            logoEnabled={false}
+            compassEnabled={false}
+            scaleBarEnabled={false}
+            onRegionIsChanging={syncMarkerPositions}
+            onRegionDidChange={(e: any) => {
+              syncMarkerPositions();
             }}
-          />
-          {location && userAccuracyRadius ? (
-            <MapboxCircle
-              key="user-accuracy-circle"
-              idKey="user-accuracy-circle"
-              center={{ latitude: location.latitude, longitude: location.longitude }}
-              radius={userAccuracyRadius}
-              strokeColor={USER_ACCURACY_STROKE_COLOR}
-              fillColor={USER_ACCURACY_FILL_COLOR}
-              strokeWidth={1.5}
+          >
+            <Mapbox.Camera
+              ref={cameraRef}
+              followZoomLevel={14}
+              followUserLocation={isFollowingUser}
+              followUserMode={Mapbox.UserTrackingMode.Follow}
+              animationDuration={1000}
             />
-          ) : null}
+            <Mapbox.UserLocation
+              visible={true}
+              renderMode={Mapbox.UserLocationRenderMode.Normal}
+              showsUserHeadingIndicator={true}
+              onUpdate={(loc: any) => {
+                if (!loc || !loc.coords) return;
+                const { latitude, longitude, speed, accuracy, heading } = loc.coords;
 
-          {/* Render Fallback Circle */}
-          {fallbackAssignedMarker ? (
-            <MapboxCircle
-              key="assigned-fallback-circle"
-              idKey="assigned-fallback-circle"
-              center={{
-                latitude: fallbackAssignedMarker.latitude,
-                longitude: fallbackAssignedMarker.longitude,
+                const nextLocation: UserLocation = {
+                  latitude,
+                  longitude,
+                  heading: heading ?? undefined,
+                  accuracy: Number.isFinite(accuracy) ? accuracy ?? null : null,
+                };
+
+                // Update local state for Mapbox Camera and Circle overlays
+                setLocation(nextLocation);
+                locationRef.current = nextLocation;
+
+                // Automatically focus and zoom into user's location on startup (first update)
+                if (!hasZoomedToUserRef.current && cameraRef.current) {
+                  hasZoomedToUserRef.current = true;
+                  console.log("[MapScreen] Auto-focusing to user's location on startup:", latitude, longitude);
+                  cameraRef.current.setCamera({
+                    centerCoordinate: [longitude, latitude],
+                    zoomLevel: 15,
+                    animationDuration: 1200,
+                  });
+                }
+
+                // Calculate and update raw speed in km/h directly from Mapbox API
+                const kmh = speed !== null && speed !== undefined ? Math.max(0, speed * 3.6) : 0;
+                setCurrentSpeed(kmh);
+
+                // Synchronize location update with backend in real-time
+                if (activeCircleIdRef.current) {
+                   maybePostCircleLocationUpdate(activeCircleIdRef.current, {
+                      latitude,
+                      longitude,
+                      accuracy: accuracy ?? null,
+                      speed: speed ?? null,
+                      userId: currentUserId,
+                      battery: currentUserBatteryLevel ? `${currentUserBatteryLevel.batteryLevel}%` : undefined,
+                   }).then(result => {
+                      if (result.success && result.data) {
+                         handleLiveStatusUpdate(result.data);
+                      }
+                   }).catch(err => console.warn("Foreground Mapbox sync failed", err));
+                }
               }}
-              radius={fallbackAssignedMarker.radius ?? DEFAULT_LOCATION_RADIUS_METERS}
-              strokeColor={ASSIGNED_LOCATION_STROKE_COLOR}
-              fillColor={ASSIGNED_LOCATION_FILL_COLOR}
-              strokeWidth={2}
             />
-          ) : null}
-        </Mapbox.MapView>
+            {location && userAccuracyRadius ? (
+              <MapboxCircle
+                key="user-accuracy-circle"
+                idKey="user-accuracy-circle"
+                center={{ latitude: location.latitude, longitude: location.longitude }}
+                radius={userAccuracyRadius}
+                strokeColor={USER_ACCURACY_STROKE_COLOR}
+                fillColor={USER_ACCURACY_FILL_COLOR}
+                strokeWidth={1.5}
+              />
+            ) : null}
+
+            {/* Render Fallback Circle */}
+            {fallbackAssignedMarker ? (
+              <MapboxCircle
+                key="assigned-fallback-circle"
+                idKey="assigned-fallback-circle"
+                center={{
+                  latitude: fallbackAssignedMarker.latitude,
+                  longitude: fallbackAssignedMarker.longitude,
+                }}
+                radius={fallbackAssignedMarker.radius ?? DEFAULT_LOCATION_RADIUS_METERS}
+                strokeColor={ASSIGNED_LOCATION_STROKE_COLOR}
+                fillColor={ASSIGNED_LOCATION_FILL_COLOR}
+                strokeWidth={2}
+              />
+            ) : null}
+          </Mapbox.MapView>
+        ) : (
+          <MapFallback style={[styles.map, { paddingBottom: MIN_HEIGHT }]} />
+        )}
 
         {/* --- X/Y FLOATING MARKER OVERLAY --- */}
         <View style={[StyleSheet.absoluteFillObject, { zIndex: 10 }]} pointerEvents="box-none">
@@ -7125,12 +7153,15 @@ const MapScreen: React.FC = () => {
                            </Text>
                          </TouchableOpacity>
 
-                        {/* Actions (Heart) */}
-                        <TouchableOpacity style={{ padding: 10 }} onPress={() => toggleFavorite(String(memberId))}>
+                        {/* Actions */}
+                        <TouchableOpacity style={{ padding: 8 }} onPress={() => handleOpenMemberJourneysModal(member)}>
+                          <Ionicons name="footsteps" size={22} color="#1E3A8A" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ padding: 8 }} onPress={() => toggleFavorite(String(memberId))}>
                           <MaterialCommunityIcons
                             name={isInfavorite ? "heart" : "heart-outline"}
                             size={24}
-                            color={isInfavorite ? "#1E3A8A" : "#1E3A8A"} // Both dark blue as per image
+                            color="#1E3A8A"
                           />
                         </TouchableOpacity>
                       </View>
@@ -7804,53 +7835,57 @@ const MapScreen: React.FC = () => {
 
               {shouldRenderLocationHistoryMap && locationHistoryPolylineCoordinates.length > 0 ? (
                 <View style={styles.locationHistoryMapWrapper}>
-                  <Mapbox.MapView
-                    ref={locationHistoryMapRef}
-                    style={styles.locationHistoryMap}
-                    styleURL={Mapbox.StyleURL.Street}
-                    logoEnabled={false}
-                    compassEnabled={false}
-                    scaleBarEnabled={false}
-                    scrollEnabled={false}
-                    pitchEnabled={false}
-                    rotateEnabled={false}
-                    zoomEnabled={false}
-                    pointerEvents="none"
-                  >
-                    <Mapbox.Camera
-                      ref={locationHistoryCameraRef}
-                      zoomLevel={14}
-                      centerCoordinate={locationHistoryMapInitialRegion ? [locationHistoryMapInitialRegion.longitude, locationHistoryMapInitialRegion.latitude] : undefined}
-                    />
-                    {locationHistoryPolylineCoordinates.length >= 2 ? (
-                      <Mapbox.ShapeSource id="historyRouteSource" shape={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: locationHistoryPolylineCoordinates.map(c => [c.longitude, c.latitude]) } } as any}>
-                        <Mapbox.LineLayer id="historyRouteLayer" style={{ lineColor: "#2563EB", lineWidth: 4 }} />
-                      </Mapbox.ShapeSource>
-                    ) : null}
+                  {canRenderMapbox() ? (
+                    <Mapbox.MapView
+                      ref={locationHistoryMapRef}
+                      style={styles.locationHistoryMap}
+                      styleURL={Mapbox.StyleURL.Street}
+                      logoEnabled={false}
+                      compassEnabled={false}
+                      scaleBarEnabled={false}
+                      scrollEnabled={false}
+                      pitchEnabled={false}
+                      rotateEnabled={false}
+                      zoomEnabled={false}
+                      pointerEvents="none"
+                    >
+                      <Mapbox.Camera
+                        ref={locationHistoryCameraRef}
+                        zoomLevel={14}
+                        centerCoordinate={locationHistoryMapInitialRegion ? [locationHistoryMapInitialRegion.longitude, locationHistoryMapInitialRegion.latitude] : undefined}
+                      />
+                      {locationHistoryPolylineCoordinates.length >= 2 ? (
+                        <Mapbox.ShapeSource id="historyRouteSource" shape={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: locationHistoryPolylineCoordinates.map(c => [c.longitude, c.latitude]) } } as any}>
+                          <Mapbox.LineLayer id="historyRouteLayer" style={{ lineColor: "#2563EB", lineWidth: 4 }} />
+                        </Mapbox.ShapeSource>
+                      ) : null}
 
-                    {locationHistoryPolylineCoordinates.length === 1 ? (
-                      <Mapbox.PointAnnotation
-                        id="history-single-point"
-                        coordinate={[locationHistoryPolylineCoordinates[0].longitude, locationHistoryPolylineCoordinates[0].latitude]}
-                        anchor={{ x: 0.5, y: 0.5 }}
-                      >
-                        <View style={styles.locationHistorySinglePoint} />
-                      </Mapbox.PointAnnotation>
-                    ) : null}
+                      {locationHistoryPolylineCoordinates.length === 1 ? (
+                        <Mapbox.PointAnnotation
+                          id="history-single-point"
+                          coordinate={[locationHistoryPolylineCoordinates[0].longitude, locationHistoryPolylineCoordinates[0].latitude]}
+                          anchor={{ x: 0.5, y: 0.5 }}
+                        >
+                          <View style={styles.locationHistorySinglePoint} />
+                        </Mapbox.PointAnnotation>
+                      ) : null}
 
-                    {locationHistoryArrowMarkers.map((segment) => (
-                      <Mapbox.PointAnnotation
-                        key={`history-arrow-${segment.id}`}
-                        id={`history-arrow-${segment.id}`}
-                        coordinate={[segment.longitude, segment.latitude]}
-                        anchor={{ x: 0.5, y: 0.5 }}
-                      >
-                        <View style={[styles.locationHistoryArrowIcon, { transform: [{ rotate: `${segment.rotation}deg` }] }]}>
-                          <Ionicons name="arrow-forward-circle" size={18} color="#2563EB" />
-                        </View>
-                      </Mapbox.PointAnnotation>
-                    ))}
-                  </Mapbox.MapView>
+                      {locationHistoryArrowMarkers.map((segment) => (
+                        <Mapbox.PointAnnotation
+                          key={`history-arrow-${segment.id}`}
+                          id={`history-arrow-${segment.id}`}
+                          coordinate={[segment.longitude, segment.latitude]}
+                          anchor={{ x: 0.5, y: 0.5 }}
+                        >
+                          <View style={[styles.locationHistoryArrowIcon, { transform: [{ rotate: `${segment.rotation}deg` }] }]}>
+                            <Ionicons name="arrow-forward-circle" size={18} color="#2563EB" />
+                          </View>
+                        </Mapbox.PointAnnotation>
+                      ))}
+                    </Mapbox.MapView>
+                  ) : (
+                    <MapFallback style={styles.locationHistoryMap} />
+                  )}
                 </View>
               ) : null}
 

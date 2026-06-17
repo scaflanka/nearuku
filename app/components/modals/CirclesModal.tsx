@@ -2,22 +2,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useRef, useState } from "react";
-import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    Share,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { ActivityIndicator, Dimensions, FlatList, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, Share, StyleSheet, TextInput as RNTextInput, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/CustomText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {authenticatedFetch } from "../../../utils/auth";
 import { API_BASE_URL } from "@/utils/constants";
@@ -172,7 +158,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
     const [sendingInvite, setSendingInvite] = useState(false);
     const [generatingCode, setGeneratingCode] = useState(false);
     const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
-    const inputRefs = useRef<Array<TextInput | null>>([]);
+    const inputRefs = useRef<Array<RNTextInput | null>>([]);
     const [joiningCircle, setJoiningCircle] = useState(false);
     const [invitations, setInvitations] = useState<InvitationData[]>([]);
     const [loadingInvitations, setLoadingInvitations] = useState(false);

@@ -4,17 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TextInputKeyPressEventData,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, NativeSyntheticEvent, ScrollView, StyleSheet, TextInput as RNTextInput, TextInputKeyPressEventData, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/CustomText";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAlert } from '../context/AlertContext'; // Added (using relative path)
 
@@ -44,7 +35,7 @@ const PhoneOTPScreen = () => {
   const phoneDigitsParam = useMemo(() => parseParam(params.phoneDigits), [params.phoneDigits]);
 
   const [otp, setOtp] = useState<string[]>(new Array(OTP_LENGTH).fill(''));
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const inputRefs = useRef<Array<RNTextInput | null>>([]);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

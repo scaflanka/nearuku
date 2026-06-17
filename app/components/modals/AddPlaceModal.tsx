@@ -4,25 +4,17 @@ import { API_BASE_URL } from "@/utils/constants";
 import {authenticatedFetch } from "@/utils/auth";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import {
-    ActivityIndicator,
-    Alert,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/CustomText";
+import { t } from "@/utils/i18n";
 import CustomSwitch from '../CustomSwitch';
 import Mapbox from "@rnmapbox/maps";
+import { canRenderMapbox, getMapboxToken } from "../../../utils/mapHelper";
+import { MapFallback } from "../../../components/MapFallback";
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "");
+if (canRenderMapbox()) {
+  Mapbox.setAccessToken(getMapboxToken());
+}
 const turfCircle = require('@turf/circle').default;
 const { point } = require('@turf/helpers');
 
@@ -670,7 +662,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                 const message = intent === "edit"
                     ? "Select a circle before updating a saved place."
                     : "Select a circle before adding a place.";
-                Alert.alert(title, message);
+                Alert.alert(t(title), t(message));
                 return false;
             }
 
@@ -678,7 +670,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                 const rawId = locationId;
                 const isValidId = rawId !== undefined && rawId !== null && String(rawId).trim().length > 0;
                 if (!isValidId) {
-                    Alert.alert("Cannot update place", "This location is missing an identifier and cannot be updated.");
+                    Alert.alert(t("Cannot update place"), t("This location is missing an identifier and cannot be updated."));
                     return false;
                 }
             }
@@ -726,15 +718,15 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                     const defaultMessage = intent === "edit" ? "Unable to update this place." : "Unable to save this place.";
                     const message = body?.message || defaultMessage;
                     setLocationError(message);
-                    Alert.alert(intent === "edit" ? "Could not update place" : "Could not add place", message);
+                    Alert.alert(t(intent === "edit" ? "Could not update place" : "Could not add place"), t(message));
                     return false;
                 }
 
                 Alert.alert(
-                    intent === "edit" ? "Place updated" : "Place added",
-                    intent === "edit"
+                    t(intent === "edit" ? "Place updated" : "Place added"),
+                    t(intent === "edit"
                         ? "This location has been updated for your circle."
-                        : "This location is now saved in your circle."
+                        : "This location is now saved in your circle.")
                 );
                 return true;
             } catch (error) {
@@ -743,7 +735,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                     ? "Something went wrong while updating this location."
                     : "Something went wrong while saving this location.";
                 setLocationError(fallbackMessage);
-                Alert.alert(intent === "edit" ? "Could not update place" : "Could not add place", fallbackMessage);
+                Alert.alert(t(intent === "edit" ? "Could not update place" : "Could not add place"), t(fallbackMessage));
                 return false;
             } finally {
                 setIsSavingLocation(false);
@@ -894,40 +886,44 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
                         <View style={styles.mapSection}>
                             <Text style={styles.mapLabel}>Set the location on the map</Text>
                             <View style={styles.mapWrapper}>
-                                <Mapbox.MapView
-                                    ref={mapRef}
-                                    style={styles.map}
-                                    styleURL={Mapbox.StyleURL.Street}
-                                    logoEnabled={false}
-                                    onRegionIsChanging={handleRegionChange}
-                                    onRegionDidChange={(e: any) => {
-                                      handleRegionChangeComplete({
-                                        latitude: e.geometry.coordinates[1],
-                                        longitude: e.geometry.coordinates[0],
-                                        latitudeDelta: 0.05,
-                                        longitudeDelta: 0.05
-                                      });
-                                    }}
-                                >
-                                    <Mapbox.Camera
-                                        ref={cameraRef}
-                                        zoomLevel={14}
-                                        centerCoordinate={initialRegion ? [initialRegion.longitude, initialRegion.latitude] : [79.8612, 6.9271]}
-                                        animationMode={'flyTo'}
-                                        animationDuration={0}
-                                    />
-                                    {selectedLocation && (
-                                        <MapboxCircle
-                                            center={{ latitude: selectedLocation.latitude, longitude: selectedLocation.longitude }}
-                                            radius={clampRadiusValue(radiusMeters)}
-                                            strokeColor="rgba(239, 68, 68, 0.6)"
-                                            fillColor="rgba(239, 68, 68, 0.18)"
-                                            strokeWidth={2}
+                                {canRenderMapbox() ? (
+                                    <Mapbox.MapView
+                                        ref={mapRef}
+                                        style={styles.map}
+                                        styleURL={Mapbox.StyleURL.Street}
+                                        logoEnabled={false}
+                                        onRegionIsChanging={handleRegionChange}
+                                        onRegionDidChange={(e: any) => {
+                                          handleRegionChangeComplete({
+                                            latitude: e.geometry.coordinates[1],
+                                            longitude: e.geometry.coordinates[0],
+                                            latitudeDelta: 0.05,
+                                            longitudeDelta: 0.05
+                                          });
+                                        }}
+                                    >
+                                        <Mapbox.Camera
+                                            ref={cameraRef}
+                                            zoomLevel={14}
+                                            centerCoordinate={initialRegion ? [initialRegion.longitude, initialRegion.latitude] : [79.8612, 6.9271]}
+                                            animationMode={'flyTo'}
+                                            animationDuration={0}
                                         />
-                                    )}
+                                        {selectedLocation && (
+                                            <MapboxCircle
+                                                center={{ latitude: selectedLocation.latitude, longitude: selectedLocation.longitude }}
+                                                radius={clampRadiusValue(radiusMeters)}
+                                                strokeColor="rgba(239, 68, 68, 0.6)"
+                                                fillColor="rgba(239, 68, 68, 0.18)"
+                                                strokeWidth={2}
+                                            />
+                                        )}
 
-                                    {/* Markers are now in an overlay below */}
-                                </Mapbox.MapView>
+                                        {/* Markers are now in an overlay below */}
+                                    </Mapbox.MapView>
+                                ) : (
+                                    <MapFallback style={styles.map} />
+                                )}
 
                                 {/* --- X/Y FLOATING MARKER OVERLAY --- */}
                                 <View style={[StyleSheet.absoluteFillObject, { zIndex: 10 }]} pointerEvents="box-none">

@@ -1,14 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import {
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { Dimensions, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import Svg, {
   G,
   Mask,

@@ -3,19 +3,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text, TextInput } from "@/components/CustomText";
+import { t } from "@/utils/i18n";
 import MapView, { Circle, MapPressEvent, Marker, MarkerDragStartEndEvent, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { authenticatedFetch } from "../utils/auth";
@@ -553,7 +543,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         const message = intent === "edit"
           ? "Select a circle before updating a saved place."
           : "Select a circle before adding a place.";
-        Alert.alert(title, message);
+        Alert.alert(t(title), t(message));
         return false;
       }
 
@@ -561,7 +551,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
         const rawId = locationId;
         const isValidId = rawId !== undefined && rawId !== null && String(rawId).trim().length > 0;
         if (!isValidId) {
-          Alert.alert("Cannot update place", "This location is missing an identifier and cannot be updated.");
+          Alert.alert(t("Cannot update place"), t("This location is missing an identifier and cannot be updated."));
           return false;
         }
       }
@@ -605,15 +595,15 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
           const defaultMessage = intent === "edit" ? "Unable to update this place." : "Unable to save this place.";
           const message = body?.message || defaultMessage;
           setLocationError(message);
-          Alert.alert(intent === "edit" ? "Could not update place" : "Could not add place", message);
+          Alert.alert(t(intent === "edit" ? "Could not update place" : "Could not add place"), t(message));
           return false;
         }
 
         Alert.alert(
-          intent === "edit" ? "Place updated" : "Place added",
-          intent === "edit"
+          t(intent === "edit" ? "Place updated" : "Place added"),
+          t(intent === "edit"
             ? "This location has been updated for your circle."
-            : "This location is now saved in your circle."
+            : "This location is now saved in your circle.")
         );
         return true;
       } catch (error) {
@@ -622,7 +612,7 @@ const AddPlaceModal: React.FC<AddPlaceModalProps> = ({
           ? "Something went wrong while updating this location."
           : "Something went wrong while saving this location.";
         setLocationError(fallbackMessage);
-        Alert.alert(intent === "edit" ? "Could not update place" : "Could not add place", fallbackMessage);
+        Alert.alert(t(intent === "edit" ? "Could not update place" : "Could not add place"), t(fallbackMessage));
         return false;
       } finally {
         setIsSavingLocation(false);

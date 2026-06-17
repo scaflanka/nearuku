@@ -1,19 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useEffect, useRef, useState } from "react";
-import {
-    ActivityIndicator,
-    Animated,
-    Dimensions,
-    Image,
-    Modal,
-    PanResponder,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    Vibration,      
-    View,
-} from "react-native";
+import { ActivityIndicator, Animated, Dimensions, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, Vibration, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Rect, Defs, Pattern, Image as SvgImage } from "react-native-svg";
 import { authenticatedFetch } from "../../../utils/auth";

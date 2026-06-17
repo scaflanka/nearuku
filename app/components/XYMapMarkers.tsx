@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { memo, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import Svg, { Path, Defs, ClipPath, Image as SvgImage, G } from "react-native-svg";
 import HomePlaceIcon from "./icons/HomePlaceIcon";
 import OfficePlaceIcon from "./icons/OfficePlaceIcon";

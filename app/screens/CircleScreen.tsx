@@ -7,14 +7,18 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Text, TextInput } from '@/components/CustomText';
+import { t } from '@/utils/i18n';
 import Mapbox from "@rnmapbox/maps";
+import { canRenderMapbox, getMapboxToken } from "../../utils/mapHelper";
+import { MapFallback } from "../../components/MapFallback";
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "");
+if (canRenderMapbox()) {
+  Mapbox.setAccessToken(getMapboxToken());
+}
 
 type LatLng = { latitude: number; longitude: number };
 import {authenticatedFetch } from "../../utils/auth";
@@ -87,7 +91,7 @@ const CircleScreen: React.FC = () => {
 
   const handleShareInvitationCode = async () => {
     if (!lastCreatedCircle?.invitationCode) {
-      Alert.alert("No Code", "Create a circle to receive an invitation code you can share.");
+      Alert.alert(t("No Code"), t("Create a circle to receive an invitation code you can share."));
       return;
     }
 
@@ -99,13 +103,13 @@ const CircleScreen: React.FC = () => {
       });
     } catch (error) {
       console.error("Error sharing invitation code:", error);
-      Alert.alert("Share Failed", "Unable to open the share sheet. Please try again.");
+      Alert.alert(t("Share Failed"), t("Unable to open the share sheet. Please try again."));
     }
   };
 
   const handleCreateCircle = async () => {
     if (!circleName || !locationName || !location) {
-      Alert.alert("Error", "Please enter all fields and pick a location on the map.");
+      Alert.alert(t("Error"), t("Please enter all fields and pick a location on the map."));
       return;
     }
 
@@ -114,7 +118,7 @@ const CircleScreen: React.FC = () => {
       parsedMetadata = JSON.parse(metadata);
     } catch (error_) {
       console.warn("Invalid metadata JSON:", error_);
-      Alert.alert("Error", "Metadata must be valid JSON.");
+      Alert.alert(t("Error"), t("Metadata must be valid JSON."));
       return;
     }
 
@@ -122,7 +126,7 @@ const CircleScreen: React.FC = () => {
       setLoading(true);
       const token = await AsyncStorage.getItem("authToken");
       if (!token) {
-        Alert.alert("Error", "No auth token found. Please log in again.");
+        Alert.alert(t("Error"), t("No auth token found. Please log in again."));
         router.replace("/screens/LogInScreen");
         return;
       }
@@ -147,7 +151,7 @@ const CircleScreen: React.FC = () => {
 
       if (response.status === 401) {
         // Token refresh failed or no valid token
-        Alert.alert("Authentication Error", "Your session has expired. Please log in again.");
+        Alert.alert(t("Authentication Error"), t("Your session has expired. Please log in again."));
         router.replace("/screens/LogInScreen");
         return;
       }
@@ -189,18 +193,18 @@ const CircleScreen: React.FC = () => {
             : `Circle created! Share this invitation code: ${invitationCode}`
           : "Circle created successfully.";
 
-        Alert.alert("Success", successMessage);
+        Alert.alert(t("Success"), t(successMessage));
         setCircleName("");
         setLocationName("");
         setLocation(null);
         setMetadata("{}");
       } else {
         console.error(data);
-        Alert.alert("Error", "Failed to create circle.");
+        Alert.alert(t("Error"), t("Failed to create circle."));
       }
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Something went wrong while creating the circle.");
+      Alert.alert(t("Error"), t("Something went wrong while creating the circle."));
     } finally {
       setLoading(false);
     }
@@ -233,34 +237,37 @@ const CircleScreen: React.FC = () => {
       />
 
       <Text style={styles.label}>Pick Location on Map</Text>
-      <Mapbox.MapView
-        style={styles.map}
-        styleURL={Mapbox.StyleURL.Street}
-        logoEnabled={false}
-        onPress={(e: any) => setLocation({ latitude: e.geometry.coordinates[1], longitude: e.geometry.coordinates[0] })}
-      >
-        <Mapbox.Camera
-          zoomLevel={14}
-          centerCoordinate={location ? [location.longitude, location.latitude] : [79.8612, 6.9271]}
-          animationMode={'flyTo'}
-          animationDuration={0}
-        />
-        {location && (
-          <Mapbox.PointAnnotation
-            id="circle-location-marker"
-            coordinate={[location.longitude, location.latitude]}
-            anchor={{ x: 0.5, y: 1 }}
-          >
-            <View style={styles.markerContainer}>
-              <View style={styles.blueCircleMarker}>
-                <MapCenterPinIcon width={16} height={24} />
+      {canRenderMapbox() ? (
+        <Mapbox.MapView
+          style={styles.map}
+          styleURL={Mapbox.StyleURL.Street}
+          logoEnabled={false}
+          onPress={(e: any) => setLocation({ latitude: e.geometry.coordinates[1], longitude: e.geometry.coordinates[0] })}
+        >
+          <Mapbox.Camera
+            zoomLevel={14}
+            centerCoordinate={location ? [location.longitude, location.latitude] : [79.8612, 6.9271]}
+            animationMode={'flyTo'}
+            animationDuration={0}
+          />
+          {location && (
+            <Mapbox.PointAnnotation
+              id="circle-location-marker"
+              coordinate={[location.longitude, location.latitude]}
+              anchor={{ x: 0.5, y: 1 }}
+            >
+              <View style={styles.markerContainer}>
+                <View style={styles.blueCircleMarker}>
+                  <MapCenterPinIcon width={16} height={24} />
+                </View>
+                <View style={styles.blueMarkerPointer} />
               </View>
-              <View style={styles.blueMarkerPointer} />
-            </View>
-          </Mapbox.PointAnnotation>
-        )}
-
-      </Mapbox.MapView>
+            </Mapbox.PointAnnotation>
+          )}
+        </Mapbox.MapView>
+      ) : (
+        <MapFallback style={styles.map} />
+      )}
 
       {loading ? (
         <ActivityIndicator size="large" color="#2563eb" style={{ marginTop: 20 }} />

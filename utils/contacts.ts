@@ -1,5 +1,6 @@
 import * as Contacts from 'expo-contacts';
 import { Alert, Linking, Platform } from 'react-native';
+import { t } from '@/utils/i18n';
 
 export interface PickedContact {
   name: string;
@@ -20,11 +21,11 @@ export const pickContact = async (): Promise<PickedContact | null> => {
     
     if (status !== 'granted') {
       Alert.alert(
-        'Permission Required',
-        'We need access to your contacts to add them as emergency contacts.',
+        t('Permission Required'),
+        t('We need access to your contacts to add them as emergency contacts.'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Settings', onPress: () => Linking.openSettings() },
+          { text: t('Cancel'), style: 'cancel' },
+          { text: t('Settings'), onPress: () => Linking.openSettings() },
         ]
       );
       return null;
@@ -40,7 +41,7 @@ export const pickContact = async (): Promise<PickedContact | null> => {
         phone: contact.phoneNumbers[0].number || '',
       };
     } else if (contact) {
-      Alert.alert('No Phone Number', 'The selected contact does not have a phone number.');
+      Alert.alert(t('No Phone Number'), t('The selected contact does not have a phone number.'));
     }
 
     return null;

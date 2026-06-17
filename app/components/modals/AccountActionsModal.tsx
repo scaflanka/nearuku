@@ -1,12 +1,6 @@
 import React, { useMemo } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { Modal, View, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { Text } from "@/components/CustomText";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { ThemeColors } from "./SettingsModal";
 

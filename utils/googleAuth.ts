@@ -3,8 +3,8 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { loginWithGoogle, storeTokens } from './auth';
 
 // 🛠️ Configuration Constants
-const WEB_CLIENT_ID = "344292197283-j1toojur03c7eqemuf3281akre64j9ed.apps.googleusercontent.com";
-const IOS_CLIENT_ID = "344292197283-colf5qfpl7fassofc62bks8vka6qf8kq.apps.googleusercontent.com";
+const WEB_CLIENT_ID = "542945576392-pq513h81druj00mrp7rbi7hsu77ml9sh.apps.googleusercontent.com";
+const IOS_CLIENT_ID = "542945576392-kee3f2plf7tfrq5ti6rrjq10ejrku806.apps.googleusercontent.com";
 
 /**
  * GoogleAuthService - A singleton service to handle Google Authentication

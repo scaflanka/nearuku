@@ -1,13 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { logout } from "../../../utils/auth";
 import { useAlert } from "../../context/AlertContext";

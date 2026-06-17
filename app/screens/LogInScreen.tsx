@@ -9,7 +9,9 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput } from '@/components/CustomText';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -204,7 +206,13 @@ const LogInScreen = () => {
     return (
         <ScrollView
             style={styles.container}
-            contentContainerStyle={[styles.contentContainer, { paddingBottom: 32 + insets.bottom }]}
+            contentContainerStyle={[
+                styles.contentContainer,
+                {
+                    paddingTop: insets.top > 0 ? insets.top + 12 : 24,
+                    paddingBottom: 16 + insets.bottom
+                }
+            ]}
             keyboardShouldPersistTaps="handled"
         >
             <View style={styles.header}>
@@ -217,6 +225,7 @@ const LogInScreen = () => {
                     />
                 </View>
                 <Text style={styles.tagline}>Stay connected with your family</Text>
+                <LanguageSelector />
             </View>
 
             <View style={styles.formContainer}>
@@ -322,33 +331,32 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         paddingHorizontal: 24,
-        paddingTop: 80,
         flexGrow: 1,
     },
     header: {
         alignItems: 'center',
-        marginBottom: 40,
+        marginBottom: 8,
     },
     logoContainer: {
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 4,
     },
     logoImage: {
-        width: 150,
-        height: 150,
+        width: 130,
+        height: 130,
     },
     tagline: {
-        fontSize: 16,
+        fontSize: 15,
         color: '#1E3A8A',
         fontWeight: '500',
     },
     formContainer: {
-        marginBottom: 20,
+        marginBottom: 8,
     },
     label: {
         fontSize: 14,
         color: '#1E3A8A',
-        marginBottom: 8,
+        marginBottom: 4,
         fontWeight: '500',
     },
     inputContainer: {
@@ -357,24 +365,24 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 8,
-        marginBottom: 16,
+        marginBottom: 10,
         backgroundColor: '#fff',
         paddingHorizontal: 12,
     },
     input: {
         flex: 1,
-        paddingVertical: 12,
+        paddingVertical: 10,
         fontSize: 16,
         color: '#374151',
     },
     forgotPasswordText: {
         color: '#6366F1',
         fontWeight: '500',
-        marginBottom: 24,
+        marginBottom: 10,
     },
     messageText: {
         textAlign: 'center',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     infoText: {
         color: '#059669',
@@ -388,10 +396,10 @@ const styles = StyleSheet.create({
     loginButton: {
         backgroundColor: '#113C9C',
         borderRadius: 14,
-        height: 56,
+        height: 48,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 12,
     },
     loginButtonText: {
         color: '#FFFFFF',
@@ -401,7 +409,7 @@ const styles = StyleSheet.create({
     orContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 12,
     },
     divider: {
         flex: 1,
@@ -420,8 +428,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
         borderRadius: 25,
-        paddingVertical: 12,
-        marginBottom: 12,
+        paddingVertical: 10,
+        marginBottom: 8,
         backgroundColor: '#fff',
     },
     socialIcon: {
@@ -439,12 +447,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
         fontWeight: 'bold',
-        marginBottom: 10,
+        marginBottom: 6,
     },
     signUpContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 10,
+        marginTop: 6,
         gap: 4
     },
     signUpText: {

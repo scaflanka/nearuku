@@ -1,15 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from "react-native";
+import { ActivityIndicator, Modal, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface MyRoleModalProps {
@@ -94,7 +86,7 @@ const MyRoleModal: React.FC<MyRoleModalProps> = ({
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={styles.section}>
-                        <Text style={styles.mainTitle}>What's your role in the{'\n'}Family Circle?</Text>
+                        <Text style={styles.mainTitle}>What’s your role in the Family Circle?</Text>
 
                         <View style={styles.optionsGrid}>
                             {RELATION_OPTIONS.map((option) => {

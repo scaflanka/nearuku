@@ -1,21 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from "react-native";
-import Mapbox from "@rnmapbox/maps";
-
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "");
+import { ActivityIndicator, Dimensions, FlatList, Image, Modal, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Path, Rect } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authenticatedFetch } from "../../../utils/auth";
 import { API_BASE_URL } from "@/utils/constants";
@@ -36,6 +24,8 @@ const isFreePlan = (plan: any): boolean => {
 };
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? '';
 
 interface MemberJourneysModalProps {
     isOpen: boolean;
@@ -106,88 +96,108 @@ const isStationaryJourney = (history: JourneyHistoryPoint[]) => {
 
 const OSRM_BASE_URL = "https://router.project-osrm.org";
 
-const decodePolyline = (encoded: string) => {
-    const poly: { latitude: number; longitude: number }[] = [];
-    let index = 0, lat = 0, lng = 0;
-    while (index < encoded.length) {
-        let b, shift = 0, result = 0;
-        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lat += (result & 1 ? ~(result >> 1) : result >> 1);
-        shift = 0; result = 0;
-        do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-        lng += (result & 1 ? ~(result >> 1) : result >> 1);
-        poly.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+const encodePolyline = (coords: { latitude: number; longitude: number }[]): string => {
+    let result = '', prevLat = 0, prevLng = 0;
+    const enc = (val: number) => {
+        let v = val < 0 ? ~(val << 1) : (val << 1);
+        let s = '';
+        while (v >= 0x20) { s += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; }
+        return s + String.fromCharCode(v + 63);
+    };
+    for (const { latitude, longitude } of coords) {
+        const lat = Math.round(latitude * 1e5);
+        const lng = Math.round(longitude * 1e5);
+        result += enc(lat - prevLat) + enc(lng - prevLng);
+        prevLat = lat; prevLng = lng;
     }
-    return poly;
+    return result;
 };
 
-const fetchRoute = async (coords: { latitude: number; longitude: number }[]) => {
-    if (coords.length < 2) return coords;
-    try {
-        const coordsStr = coords.map(p => `${p.longitude},${p.latitude}`).join(";");
-        const res = await fetch(`${OSRM_BASE_URL}/route/v1/driving/${coordsStr}?overview=full&geometries=polyline`);
-        const data = await res.json();
-        if (res.ok && data.routes?.[0]?.geometry) return decodePolyline(data.routes[0].geometry);
-    } catch { /* fall through */ }
-    return coords;
+const buildStaticMapUrl = (coords: { latitude: number; longitude: number }[], osrmEncoded?: string): string | null => {
+    if (!MAPBOX_TOKEN || coords.length === 0) return null;
+    const start = coords[0];
+    const end = coords[coords.length - 1];
+    const startPin = `pin-s+00cc44(${start.longitude.toFixed(5)},${start.latitude.toFixed(5)})`;
+    const endPin   = `pin-s+ee3333(${end.longitude.toFixed(5)},${end.latitude.toFixed(5)})`;
+    const w = Math.min(Math.round(SCREEN_WIDTH), 1280);
+    const h = Math.min(Math.round(SCREEN_HEIGHT * 0.25), 640);
+    const base = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static`;
+
+    const makeUrl = (polyline: string) => {
+        const path = `path-4+4285F4-1(${encodeURIComponent(polyline)})`;
+        const url = `${base}/${startPin},${endPin},${path}/auto/${w}x${h}?access_token=${MAPBOX_TOKEN}&padding=40`;
+        return url.length <= 8192 ? url : null;
+    };
+
+    if (osrmEncoded) {
+        const url = makeUrl(osrmEncoded);
+        if (url) return url;
+    }
+
+    // Fallback: sample raw coords and encode
+    const maxPts = 20;
+    const step = Math.ceil(coords.length / maxPts);
+    const sampled = coords.filter((_, i) => i % step === 0 || i === coords.length - 1);
+    return makeUrl(encodePolyline(sampled));
 };
 
-// --- Journey Map Mini Preview ---
+
+
+// --- Journey Map Static Preview (Mapbox Static Images API) ---
 const JourneyMapItem = ({ history }: { history: JourneyHistoryPoint[] }) => {
-    const mapRef = React.useRef<Mapbox.MapView>(null);
-    const cameraRef = React.useRef<Mapbox.Camera>(null);
-    const [roadCoords, setRoadCoords] = useState<{ latitude: number; longitude: number }[]>([]);
-    const historyCoords = useMemo(() => (history || []).map(p => ({ latitude: Number(p.latitude), longitude: Number(p.longitude) })), [history]);
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [imgError, setImgError] = useState(false);
+    const historyCoords = useMemo(() =>
+        (history || []).map(p => ({ latitude: Number(p.latitude), longitude: Number(p.longitude) })),
+        [history]
+    );
 
     useEffect(() => {
         let mounted = true;
-        if (historyCoords.length >= 2) {
-            fetchRoute(historyCoords).then(snapped => { if (mounted) setRoadCoords(snapped); });
-        }
+        if (historyCoords.length < 2) return;
+        setImageUrl(null);
+        setImgError(false);
+
+        (async () => {
+            let osrmEncoded: string | undefined;
+            try {
+                const maxOsrm = 25;
+                let pts = historyCoords;
+                if (pts.length > maxOsrm) {
+                    const step = Math.floor(pts.length / maxOsrm);
+                    pts = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+                }
+                const coordsStr = pts.map(p => `${p.longitude},${p.latitude}`).join(";");
+                const res = await fetch(`${OSRM_BASE_URL}/route/v1/driving/${coordsStr}?overview=full&geometries=polyline`);
+                const data = await res.json();
+                if (res.ok && data.routes?.[0]?.geometry) osrmEncoded = data.routes[0].geometry;
+            } catch {}
+
+            if (mounted) setImageUrl(buildStaticMapUrl(historyCoords, osrmEncoded));
+        })();
+
         return () => { mounted = false; };
     }, [historyCoords]);
 
-    const sampledMarkers = useMemo(() => {
-        if (historyCoords.length <= 15) return historyCoords.map((c, i) => ({ ...c, label: i + 1 }));
-        const step = Math.floor(historyCoords.length / 14);
-        const sampled = [];
-        for (let i = 0; i < historyCoords.length - 1; i += step) sampled.push({ ...historyCoords[i], label: i + 1 });
-        sampled.push({ ...historyCoords[historyCoords.length - 1], label: historyCoords.length });
-        return sampled;
-    }, [historyCoords]);
+    if (historyCoords.length < 2) return null;
 
     return (
-        <View style={{ width: "100%", height: SCREEN_HEIGHT * 0.25 }}>
-            <Mapbox.MapView
-                ref={mapRef}
-                style={styles.mapPreview}
-                styleURL={Mapbox.StyleURL.Street}
-                logoEnabled={false}
-                compassEnabled={false}
-                scaleBarEnabled={false}
-                onDidFinishLoadingMap={() => { if (historyCoords.length > 1) setTimeout(() => cameraRef.current?.fitBounds([Math.max(...historyCoords.map(c => c.longitude)), Math.max(...historyCoords.map(c => c.latitude))], [Math.min(...historyCoords.map(c => c.longitude)), Math.min(...historyCoords.map(c => c.latitude))], 60, 800), 800); }}
-            >
-                <Mapbox.Camera
-                    ref={cameraRef}
-                    zoomLevel={14}
-                    centerCoordinate={historyCoords[0] ? [historyCoords[0].longitude, historyCoords[0].latitude] : [79.8612, 6.9271]}
+        <View style={{ width: "100%", height: SCREEN_HEIGHT * 0.25, borderRadius: 12, overflow: 'hidden', backgroundColor: '#E8EEF4' }}>
+            {imageUrl && !imgError ? (
+                <Image
+                    source={{ uri: imageUrl }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                    onError={() => setImgError(true)}
                 />
-                {(roadCoords.length >= 2 || historyCoords.length >= 2) && (
-                    <Mapbox.ShapeSource id="routeSource" shape={{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: (roadCoords.length > 0 ? roadCoords : historyCoords).map(c => [c.longitude, c.latitude]) } } as any}>
-                        <Mapbox.LineLayer id="routeLayer" style={{ lineColor: COLORS.roadBlue, lineWidth: 5, lineJoin: 'round', lineCap: 'round' }} />
-                    </Mapbox.ShapeSource>
-                )}
-                {sampledMarkers.map((point, idx) => (
-                    <Mapbox.PointAnnotation key={String(idx)} id={`marker-${idx}`} coordinate={[point.longitude, point.latitude]} anchor={{ x: 0.5, y: 0.5 }}>
-                        <View style={styles.numberedMarker}><Text style={styles.numberedMarkerText}>{point.label}</Text></View>
-                    </Mapbox.PointAnnotation>
-                ))}
-            </Mapbox.MapView>
-            <View style={styles.mapControls}>
-                <TouchableOpacity style={styles.mapControlBtn} onPress={() => cameraRef.current?.fitBounds([Math.max(...historyCoords.map(c => c.longitude)), Math.max(...historyCoords.map(c => c.latitude))], [Math.min(...historyCoords.map(c => c.longitude)), Math.min(...historyCoords.map(c => c.latitude))], 60, 800)}>
-                    <MaterialCommunityIcons name="focus-field" size={20} color={COLORS.primary} />
-                </TouchableOpacity>
-            </View>
+            ) : (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    {imgError
+                        ? <Ionicons name="map-outline" size={40} color="#9CA3AF" />
+                        : <ActivityIndicator color={COLORS.primary} />
+                    }
+                </View>
+            )}
         </View>
     );
 };
@@ -306,8 +316,6 @@ const MemberJourneysModal: React.FC<MemberJourneysModalProps> = ({ isOpen, onClo
         }
     }, [isOpen, fetchHistory]);
 
-    if (!isOpen) return null;
-
     const avatarUri = memberData?.avatar
         ? (memberData.avatar.startsWith("http") ? memberData.avatar : `${API_BASE_URL}${memberData.avatar}`.replace("/api/uploads", "/uploads"))
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(memberData?.name || "User")}&background=1E3A8A&color=fff`;
@@ -410,24 +418,17 @@ const MemberJourneysModal: React.FC<MemberJourneysModalProps> = ({ isOpen, onClo
     return (
         <Modal visible={isOpen} animationType="slide" transparent={false} onRequestClose={onClose}>
             <SafeAreaView style={styles.container}>
-                {loading && journeys.length === 0 ? (
-                    <>
-                        {renderHeader()}
-                        <View style={styles.center}>
-                            <ActivityIndicator size="large" color={COLORS.primary} />
-                            <Text style={{ marginTop: 12, color: COLORS.textSub }}>Loading journeys…</Text>
-                        </View>
-                    </>
-                ) : (
-                    <FlatList
-                        data={journeys}
-                        keyExtractor={(item, index) => item.startTime || index.toString()}
-                        ListHeaderComponent={renderHeader()}
-                        renderItem={({ item }) => <JourneyListItem item={item} />}
-                        contentContainerStyle={styles.listContent}
-                        ListEmptyComponent={
-                            !loading ? (
-                                <View style={styles.emptyContainer}>
+                <FlatList
+                    data={journeys}
+                    keyExtractor={(item, index) => item.startTime || index.toString()}
+                    ListHeaderComponent={renderHeader}
+                    renderItem={({ item }) => <JourneyListItem item={item} />}
+                    contentContainerStyle={styles.listContent}
+                    ListEmptyComponent={
+                        <View style={styles.emptyContainer}>
+                            {loading
+                                ? <ActivityIndicator size="large" color={COLORS.primary} />
+                                : <>
                                     <Ionicons name="car-outline" size={64} color="#D1D5DB" />
                                     <Text style={styles.emptyTitle}>No Journeys Yet</Text>
                                     <Text style={styles.emptyText}>
@@ -435,11 +436,11 @@ const MemberJourneysModal: React.FC<MemberJourneysModalProps> = ({ isOpen, onClo
                                             ? "Select a circle to view journey history."
                                             : "Driving activity will appear here once detected."}
                                     </Text>
-                                </View>
-                            ) : null
-                        }
-                    />
-                )}
+                                  </>
+                            }
+                        </View>
+                    }
+                />
             </SafeAreaView>
         </Modal>
     );

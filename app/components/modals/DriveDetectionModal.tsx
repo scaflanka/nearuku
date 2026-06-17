@@ -1,15 +1,8 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import CustomSwitch from "../../components/CustomSwitch";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DrivingIcon from "../../components/icons/DrivingIcon";

@@ -1,19 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    NativeModules,
-    Platform,
-    AppState
-} from "react-native";
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, NativeModules, Platform, AppState } from "react-native";
+import { Text } from "@/components/CustomText";
 import CustomSwitch from "../../components/CustomSwitch";
 import { SafeAreaView } from "react-native-safe-area-context";
 import PhoneSharingIcon from "../../components/icons/PhoneSharingIcon";

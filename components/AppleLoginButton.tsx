@@ -1,13 +1,6 @@
 import React from 'react';
-import {
-  ActivityIndicator,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View, ViewStyle } from "react-native";
+import { Text } from "@/components/CustomText";
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { AntDesign } from '@expo/vector-icons';
 

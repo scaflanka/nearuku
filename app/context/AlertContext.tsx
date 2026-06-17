@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { createContext, ReactNode, useCallback, useContext, useState } from 'react';
-import { Dimensions, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Modal, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 
 const { width } = Dimensions.get('window');
 

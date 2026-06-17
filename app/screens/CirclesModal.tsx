@@ -13,11 +13,11 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Text, TextInput } from '@/components/CustomText';
+import { t } from '@/utils/i18n';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { authenticatedFetch } from "../../utils/auth";
 import { API_BASE_URL } from "@/utils/constants";
@@ -276,7 +276,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
   const handleCreateCircle = async (nameToUse?: string) => {
     const name = nameToUse ?? newCircleName;
     if (!name || !name.trim()) {
-      Alert.alert("Required", "Please enter a name for the circle.");
+      Alert.alert(t("Required"), t("Please enter a name for the circle."));
       return;
     }
 
@@ -293,7 +293,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
 
       if (!createResponse.ok) {
         const err = await createResponse.json().catch(() => ({}));
-        Alert.alert("Error", err.message || "Failed to create circle.");
+        Alert.alert(t("Error"), t(err.message || "Failed to create circle."));
         return;
       }
 
@@ -343,7 +343,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
       setNewCircleName("");
     } catch (error) {
       console.error("Error creating circle:", error);
-      Alert.alert("Error", "Connection failed.");
+      Alert.alert(t("Error"), t("Connection failed."));
     } finally {
       setCreatingCircle(false);
     }
@@ -351,7 +351,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
 
   const handleSendInvite = async () => {
     if (!inviteEmail.trim() || !createdCircleData?.id) {
-      Alert.alert("Error", "Please enter an email address and ensure a circle exists.");
+      Alert.alert(t("Error"), t("Please enter an email address and ensure a circle exists."));
       return;
     }
 
@@ -379,16 +379,16 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
 
       if (response.ok || response.status === 201) {
         // NEW: API no longer returns any code
-        Alert.alert("Success", `Invitation sent to ${inviteEmail}.`);
+        Alert.alert(t("Success"), t(`Invitation sent to ${inviteEmail}.`));
         setInviteEmail("");
         setInviteNickname("");
         setInviteRole("member"); // Reset if needed
       } else {
-        Alert.alert("Error", data.message || "Failed to send invite.");
+        Alert.alert(t("Error"), t(data.message || "Failed to send invite."));
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Network error.");
+      Alert.alert(t("Error"), t("Network error."));
     } finally {
       setSendingInvite(false);
     }
@@ -396,7 +396,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
 
   const handleGenerateInvitationCode = async () => {
     if (!createdCircleData?.id) {
-      Alert.alert("Error", "A circle must be selected to generate a code.");
+      Alert.alert(t("Error"), t("A circle must be selected to generate a code."));
       return;
     }
 
@@ -418,14 +418,14 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
         if (circlePayload) setCreatedCircleData(circlePayload as CircleData);
         setGeneratedCode(code ?? null);
         setCodeExpiry(expiresAt ?? null);
-        Alert.alert("Success", "Invitation code generated successfully.");
+        Alert.alert(t("Success"), t("Invitation code generated successfully."));
         if (onRefresh) onRefresh();
       } else {
-        Alert.alert("Error", payload.message || "Failed to generate invitation code.");
+        Alert.alert(t("Error"), t(payload.message || "Failed to generate invitation code."));
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Network error.");
+      Alert.alert(t("Error"), t("Network error."));
     } finally {
       setGeneratingCode(false);
     }
@@ -437,13 +437,13 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
         message: `Join my circle "${createdCircleData.name}" on the app using code: ${generatedCode}`,
       });
     } catch (error: any) {
-      Alert.alert("Share error", error.message || "Could not share code.");
+      Alert.alert(t("Share error"), t(error.message || "Could not share code."));
     }
   };
 
   const handleJoinByCode = async () => {
     if (!joinCode.trim() || joinCode.trim().length < 6) {
-      Alert.alert("Invalid Code", "Enter a valid 6-character code.");
+      Alert.alert(t("Invalid Code"), t("Enter a valid 6-character code."));
       return;
     }
     Keyboard.dismiss();
@@ -456,16 +456,16 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
       });
       const data = await response.json().catch(() => ({}));
       if (response.ok) {
-        Alert.alert("Success", "Joined circle successfully!");
+        Alert.alert(t("Success"), t("Joined circle successfully!"));
         setJoinCode("");
         if (onRefresh) await onRefresh();
         await loadInvitations();
       } else {
-        Alert.alert("Error", data.message || "Invalid or expired code.");
+        Alert.alert(t("Error"), t(data.message || "Invalid or expired code."));
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Network error.");
+      Alert.alert(t("Error"), t("Network error."));
     } finally {
       setJoiningCircle(false);
     }
@@ -504,12 +504,12 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
         method: "POST",
       });
       if (res.ok) {
-        Alert.alert("Joined!");
+        Alert.alert(t("Joined!"));
         await loadInvitations();
         if (onRefresh) await onRefresh();
       } else {
         const data = await res.json().catch(() => ({}));
-        Alert.alert("Error", data.message || "Could not accept invite.");
+        Alert.alert(t("Error"), t(data.message || "Could not accept invite."));
       }
     } catch (e) {
       console.error(e);
@@ -525,7 +525,7 @@ const CirclesModal: React.FC<CirclesModalProps> = ({
         await loadInvitations();
       } else {
         const data = await res.json().catch(() => ({}));
-        Alert.alert("Error", data.message || "Could not reject invite.");
+        Alert.alert(t("Error"), t(data.message || "Could not reject invite."));
       }
     } catch (e) {
       console.error(e);

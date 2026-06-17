@@ -7,11 +7,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
+  TextInput as RNTextInput,
 } from "react-native";
+import { Text, TextInput } from '@/components/CustomText';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const COLORS = {
@@ -240,7 +240,7 @@ export const JoinCircleModal: React.FC<JoinCircleModalProps> = ({
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const inputRefs = useRef<Array<RNTextInput | null>>([]);
 
   const handleJoin = async () => {
     const pin = otp.join("");

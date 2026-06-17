@@ -22,6 +22,7 @@ import { NotificationToast } from "../components/NotificationToast";
 import { NotificationItem, NotificationService } from "../services/NotificationService";
 import { AlertProvider } from "./context/AlertContext";
 import { SpeedProvider } from "./context/SpeedContext";
+import { LanguageProvider } from "./context/LanguageContext";
 
 
 export default function RootLayout() {
@@ -122,23 +123,25 @@ export default function RootLayout() {
   }, [router]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AlertProvider>
-        <SpeedProvider>
-          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-            <Slot />
-            <NotificationToast
-              visible={toastVisible}
-              notification={currentNotification}
-              onPress={() => {
-                setToastVisible(false);
-              }}
-              onClose={() => setToastVisible(false)}
-            />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </SpeedProvider>
-      </AlertProvider>
-    </GestureHandlerRootView>
+    <LanguageProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AlertProvider>
+          <SpeedProvider>
+            <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+              <Slot />
+              <NotificationToast
+                visible={toastVisible}
+                notification={currentNotification}
+                onPress={() => {
+                  setToastVisible(false);
+                }}
+                onClose={() => setToastVisible(false)}
+              />
+              <StatusBar style="auto" />
+            </ThemeProvider>
+          </SpeedProvider>
+        </AlertProvider>
+      </GestureHandlerRootView>
+    </LanguageProvider>
   );
 }

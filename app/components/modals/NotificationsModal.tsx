@@ -1,18 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Image,
-    Animated,
-    Dimensions,
-    ScrollView,
-} from "react-native";
+import { ActivityIndicator, FlatList, Modal, StyleSheet, TouchableOpacity, View, Image, Animated, Dimensions, ScrollView } from "react-native";
+import { Text } from "@/components/CustomText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_BASE_URL } from "@/utils/constants";
 import { authenticatedFetch } from "../../../utils/auth";

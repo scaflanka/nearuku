@@ -11,6 +11,7 @@ export interface NotificationListenerOptions {
 }
 
 import { Alert } from "react-native";
+import { t } from "@/utils/i18n";
 
 let notificationReceptionEnabled = false;
 let activeListenerCleanup: (() => void) | null = null;
@@ -27,7 +28,7 @@ const getTitleAndBody = (remoteMessage: FirebaseMessagingTypes.RemoteMessage) =>
 
 const displayForegroundAlert = (title: string | undefined, body: string | undefined) => {
   // Simple alert fallback if no custom handler is provided
-  Alert.alert(title || "Notification", body || "");
+  Alert.alert(t(title || "Notification"), t(body || ""));
 };
 
 const handleNavigationIntent = (

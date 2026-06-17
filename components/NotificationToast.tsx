@@ -1,7 +1,8 @@
 import { NotificationItem } from '@/services/NotificationService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NotificationToastProps {

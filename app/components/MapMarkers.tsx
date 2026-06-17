@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { memo, useEffect, useRef, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Text } from "@/components/CustomText";
 import Mapbox from "@rnmapbox/maps";
 
 const COLORS = {
