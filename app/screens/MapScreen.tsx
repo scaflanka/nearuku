@@ -100,6 +100,8 @@ import {
   BatteryLevelInfo,
   CircleData,
   CircleMember,
+  Journey,
+  JourneyHistoryPoint,
   LocationHistoryEntry,
   LocationHistoryFilterKey,
   LocationPoint,
@@ -127,7 +129,6 @@ import CirclesModal from "../components/modals/CirclesModal";
 import DriveDetectionModal from "../components/modals/DriveDetectionModal";
 import EditCircleNameModal from "../components/modals/EditCircleNameModal";
 import LocationSharingModal from "../components/modals/LocationSharingModal";
-import MemberJourneysModal from "../components/modals/MemberJourneysModal";
 import MyRoleModal from "../components/modals/MyRoleModal";
 import NotificationsModal from "../components/modals/NotificationsModal";
 import SettingsModal from "../components/modals/SettingsModal";
@@ -436,6 +437,92 @@ const haversineDistanceMeters = (lat1: number, lon1: number, lat2: number, lon2:
     Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+};
+
+const calcJourneyStats = (history: JourneyHistoryPoint[]) => {
+    let totalDist = 0, maxSpeed = 0;
+    for (let i = 0; i < history.length - 1; i++) {
+        const d = haversineDistanceMeters(
+            history[i].latitude, history[i].longitude,
+            history[i + 1].latitude, history[i + 1].longitude
+        );
+        totalDist += d;
+        const timeDiff =
+            (new Date(history[i + 1].timestamp).getTime() - new Date(history[i].timestamp).getTime()) / 3600000;
+        if (timeDiff > 0) {
+            const s = d / 1609.34 / timeDiff;
+            if (s > maxSpeed && s < 150) maxSpeed = s;
+        }
+    }
+    return { distanceMiles: (totalDist / 1609.34).toFixed(1), topSpeedMph: Math.round(maxSpeed) };
+};
+
+const isJourneyStationary = (history: JourneyHistoryPoint[]) => {
+    if (!history || history.length < 2) return true;
+    const s = history[0], e = history[history.length - 1];
+    const disp = haversineDistanceMeters(
+        Number(s.latitude), Number(s.longitude),
+        Number(e.latitude), Number(e.longitude)
+    );
+    const st = calcJourneyStats(history);
+    return (disp < 100 && st.topSpeedMph < 5) || parseFloat(st.distanceMiles) * 1609.34 < 150;
+};
+
+const formatJourneyTimeRange = (start: string, end: string) => {
+    try {
+        const fmt = (d: Date) =>
+            d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase();
+        return `${fmt(new Date(start))} - ${fmt(new Date(end))}`;
+    } catch { return "N/A"; }
+};
+
+const getJourneyDuration = (start: string, end: string) => {
+    try {
+        const diffMs = new Date(end).getTime() - new Date(start).getTime();
+        if (diffMs < 0) return "0 min";
+        const mins = Math.floor(diffMs / 60000);
+        if (mins < 60) return `${mins} min`;
+        return `${Math.floor(mins / 60)} hr ${mins % 60} min`;
+    } catch { return "N/A"; }
+};
+
+const OSRM_BASE_URL = "https://router.project-osrm.org";
+
+const encodeJourneyPolyline = (coords: { latitude: number; longitude: number }[]) => {
+    let result = "", prevLat = 0, prevLng = 0;
+    const enc = (val: number) => {
+        let v = val < 0 ? ~(val << 1) : val << 1;
+        let s = "";
+        while (v >= 0x20) { s += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; }
+        return s + String.fromCharCode(v + 63);
+    };
+    for (const { latitude, longitude } of coords) {
+        const lat = Math.round(latitude * 1e5);
+        const lng = Math.round(longitude * 1e5);
+        result += enc(lat - prevLat) + enc(lng - prevLng);
+        prevLat = lat; prevLng = lng;
+    }
+    return result;
+};
+
+const buildJourneyMapUrl = (coords: { latitude: number; longitude: number }[], osrmEncoded?: string) => {
+    const token = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
+    if (!token || coords.length === 0) return null;
+    const s = coords[0], e = coords[coords.length - 1];
+    const startPin = `pin-s+00cc44(${s.longitude.toFixed(5)},${s.latitude.toFixed(5)})`;
+    const endPin   = `pin-s+ee3333(${e.longitude.toFixed(5)},${e.latitude.toFixed(5)})`;
+    const w = Math.min(Math.round(SCREEN_WIDTH), 1280);
+    const h = Math.min(Math.round(SCREEN_HEIGHT * 0.25), 640);
+    const base = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static`;
+    const makeUrl = (poly: string) => {
+        const path = `path-4+4285F4-1(${encodeURIComponent(poly)})`;
+        const url = `${base}/${startPin},${endPin},${path}/auto/${w}x${h}?access_token=${token}&padding=40`;
+        return url.length <= 8192 ? url : null;
+    };
+    if (osrmEncoded) { const u = makeUrl(osrmEncoded); if (u) return u; }
+    const step = Math.ceil(coords.length / 20);
+    const sampled = coords.filter((_, i) => i % step === 0 || i === coords.length - 1);
+    return makeUrl(encodeJourneyPolyline(sampled));
 };
 
 type StoredLocationSnapshot = {
@@ -2340,6 +2427,58 @@ const isFreePlan = (plan: any): boolean => {
   return true;
 };
 
+const JourneyMapPreview = React.memo(({ history }: { history: JourneyHistoryPoint[] }) => {
+    const [imageUrl, setImageUrl] = React.useState<string | null>(null);
+    const [imgError, setImgError] = React.useState(false);
+    const coords = React.useMemo(
+        () => history.map(p => ({ latitude: Number(p.latitude), longitude: Number(p.longitude) })),
+        [history]
+    );
+
+    React.useEffect(() => {
+        let alive = true;
+        if (coords.length < 2) return;
+        setImageUrl(null);
+        setImgError(false);
+        (async () => {
+            let osrmEncoded: string | undefined;
+            try {
+                const pts = coords.length > 25
+                    ? coords.filter((_, i) => i % Math.floor(coords.length / 25) === 0 || i === coords.length - 1)
+                    : coords;
+                const res = await fetch(
+                    `${OSRM_BASE_URL}/route/v1/driving/${pts.map(p => `${p.longitude},${p.latitude}`).join(";")
+                    }?overview=full&geometries=polyline`
+                );
+                const data = await res.json();
+                if (res.ok && data.routes?.[0]?.geometry) osrmEncoded = data.routes[0].geometry;
+            } catch {}
+            if (alive) setImageUrl(buildJourneyMapUrl(coords, osrmEncoded));
+        })();
+        return () => { alive = false; };
+    }, [coords]);
+
+    if (coords.length < 2) return null;
+    return (
+        <View style={{ width: '100%', height: 180, borderRadius: 12, overflow: 'hidden', marginTop: 10, backgroundColor: '#F3F4F6' }}>
+            {imageUrl && !imgError ? (
+                <Image
+                    source={{ uri: imageUrl }}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                    onError={() => setImgError(true)}
+                />
+            ) : (
+                <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                    {imgError
+                        ? <Ionicons name="map-outline" size={40} color="#9CA3AF" />
+                        : <ActivityIndicator color="#113C9C" />}
+                </View>
+            )}
+        </View>
+    );
+});
+
 // =======================================================
 // MAP SCREEN COMPONENT
 // =======================================================
@@ -2436,6 +2575,10 @@ const MapScreen: React.FC = () => {
 
   const [activeSection, setActiveSection] = useState<'members' | 'place' | 'key' | 'bluetooth'>('members');
   const [selectedDrivingMemberId, setSelectedDrivingMemberId] = useState<string | "all">("all");
+  const [drivingJourneyCache, setDrivingJourneyCache] = useState<Record<string, Journey[]>>({});
+  const [drivingBatchStatsCache, setDrivingBatchStatsCache] = useState<Record<string, { totalMiles: string; totalDrives: number; topSpeed: number }>>({});
+  const [drivingLoading, setDrivingLoading] = useState(false);
+  const [drivingDataLoaded, setDrivingDataLoaded] = useState<string | null>(null);
   const [profileNameInput, setProfileNameInput] = useState("");
   const [profileMetadataInput, setProfileMetadataInput] = useState("");
   const [profileAvatarOriginal, setProfileAvatarOriginal] = useState<string | null>(null);
@@ -2462,9 +2605,7 @@ const MapScreen: React.FC = () => {
   const [addPlaceMode, setAddPlaceMode] = useState<'create' | 'edit'>('create');
   const [editingLocation, setEditingLocation] = useState<LocationPoint | null>(null);
 
-  // Member Journeys Modal State
-  const [isMemberJourneysModalOpen, setIsMemberJourneysModalOpen] = useState(false);
-  const [selectedMemberForJourneys, setSelectedMemberForJourneys] = useState<string | number | undefined>(undefined);
+
   const [isMyRoleModalOpen, setIsMyRoleModalOpen] = useState(false);
 
   const [driveDetectionEnabled, setDriveDetectionEnabled] = useState(false);
@@ -2735,6 +2876,79 @@ const MapScreen: React.FC = () => {
   // --- Journeys Modal State ---
   // const [isMemberJourneysModalVisible, setIsMemberJourneysModalVisible] = useState(false);
   // const [memberJourneysData, setMemberJourneysData] = useState<CircleMember | null>(null);
+
+  const fetchDrivingData = useCallback(async (forceRefresh = false) => {
+    if (!selectedCircle?.id) return;
+    const circleKey = String(selectedCircle.id);
+    if (!forceRefresh && drivingDataLoaded === circleKey) return;
+    setDrivingLoading(true);
+    try {
+      let currentPlan = null;
+      try {
+        const planJson = await AsyncStorage.getItem("userPlan");
+        if (planJson) currentPlan = JSON.parse(planJson);
+      } catch {}
+
+      const res = await authenticatedFetch(
+        `${API_BASE_URL}/circles/${circleKey}/history?page=1&perPage=100`
+      );
+      if (!res.ok) return;
+      const payload = await res.json();
+      const histData = payload?.data;
+      const members: any[] = histData?.members || [];
+      const creator: any = histData?.creator;
+      const allPeople = creator ? [creator, ...members] : members;
+
+      const now = new Date();
+      const cutoff = new Date();
+      if (isFreePlan(currentPlan)) {
+        cutoff.setDate(now.getDate() - 1);
+      } else {
+        cutoff.setDate(now.getDate() - 30);
+      }
+      cutoff.setHours(0, 0, 0, 0);
+
+      const newCache: Record<string, Journey[]> = {};
+      const newStatsCache: Record<string, { totalMiles: string; totalDrives: number; topSpeed: number }> = {};
+
+      for (const person of allPeople) {
+        const pid = String(person.id);
+        const filtered: Journey[] = (person.journeys || []).filter(
+          (j: Journey) => new Date(j.startTime || j.endTime).getTime() >= cutoff.getTime()
+        );
+        newCache[pid] = filtered;
+
+        let totalMeters = 0, topSpeed = 0, driveCount = 0;
+        filtered.filter((j: Journey) => !isJourneyStationary(j.history || [])).forEach((j: Journey) => {
+          const s = calcJourneyStats(j.history || []);
+          if (s.topSpeedMph > topSpeed) topSpeed = s.topSpeedMph;
+          totalMeters += parseFloat(s.distanceMiles) * 1609.34;
+          driveCount++;
+        });
+        newStatsCache[pid] = { totalMiles: (totalMeters / 1609.34).toFixed(1), totalDrives: driveCount, topSpeed };
+      }
+
+      setDrivingJourneyCache(newCache);
+      setDrivingBatchStatsCache(newStatsCache);
+      setDrivingDataLoaded(circleKey);
+    } catch (e) {
+      console.warn("fetchDrivingData error", e);
+    } finally {
+      setDrivingLoading(false);
+    }
+  }, [selectedCircle?.id, drivingDataLoaded]);
+
+  useEffect(() => {
+    if (activeTab === "Driving") {
+      fetchDrivingData();
+    }
+  }, [activeTab, fetchDrivingData]);
+
+  useEffect(() => {
+    setDrivingDataLoaded(null);
+    setDrivingJourneyCache({});
+    setDrivingBatchStatsCache({});
+  }, [selectedCircle?.id]);
 
   // --- Derived State (Moved up) ---
   const circleCreatorId = useMemo(() => {
@@ -5265,12 +5479,6 @@ const MapScreen: React.FC = () => {
     setIsSettingsModalOpen(false);
   }, []);
 
-  const handleOpenMemberJourneysModal = useCallback((member: CircleMember) => {
-    const mId = member.id || member.userId;
-    // Always open the modal - it will show empty state if no data available
-    setSelectedMemberForJourneys(mId ?? undefined);
-    setIsMemberJourneysModalOpen(true);
-  }, []);
   const handleToggleAdminStatus = useCallback(async (userId: string, isAdmin: boolean) => {
     if (!selectedCircle) return;
     const desiredRole = isAdmin ? 'admin' : 'member';
@@ -6739,7 +6947,7 @@ const MapScreen: React.FC = () => {
                     });
                   }
                 }}
-                onLongPress={() => !isMe && memberRecord && handleOpenMemberJourneysModal(memberRecord)}
+                onLongPress={() => {}}
               />
             );
           })}
@@ -7084,10 +7292,14 @@ const MapScreen: React.FC = () => {
 
                     return (
                       <View key={memberId} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14 }}>
-                        {/* Avatar & Battery - tappable to open journey modal */}
+                        {/* Avatar & Battery - tappable to go to Driving tab */}
                         <TouchableOpacity
                           style={{ alignItems: 'center', marginRight: 16 }}
-                          onPress={() => handleOpenMemberJourneysModal(member)}
+                          onPress={() => {
+                            const mId = String(member.id || member.userId || "");
+                            if (mId) setSelectedDrivingMemberId(mId);
+                            setActiveTab("Driving");
+                          }}
                           activeOpacity={0.8}
                         >
                           <View style={{
@@ -7154,9 +7366,6 @@ const MapScreen: React.FC = () => {
                          </TouchableOpacity>
 
                         {/* Actions */}
-                        <TouchableOpacity style={{ padding: 8 }} onPress={() => handleOpenMemberJourneysModal(member)}>
-                          <Ionicons name="footsteps" size={22} color="#1E3A8A" />
-                        </TouchableOpacity>
                         <TouchableOpacity style={{ padding: 8 }} onPress={() => toggleFavorite(String(memberId))}>
                           <MaterialCommunityIcons
                             name={isInfavorite ? "heart" : "heart-outline"}
@@ -7391,18 +7600,116 @@ const MapScreen: React.FC = () => {
                   <Text style={{ fontSize: 18, fontWeight: '700', color: '#1E3A8A', flex: 1, textAlign: 'center', marginRight: 52 }}>This Week</Text>
                 </View>
 
-                {/* Drives List / Empty State */}
-                <ScrollView contentContainerStyle={{ padding: 20, alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
-                  <View style={{ width: '100%', backgroundColor: '#EFF6FF', borderRadius: 20, padding: 30, alignItems: 'center' }}>
-                    <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                      <SteeringWheelIcon color={COLORS.white} size={30} />
-                    </View>
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E3A8A', marginBottom: 8 }}>No Drives Detected</Text>
-                    <Text style={{ fontSize: 14, color: COLORS.primary, textAlign: 'center', lineHeight: 20 }}>
-                      Your Circle may have turned off Drive Detection or had a low battery/poor connectivity.
-                    </Text>
-                  </View>
-                </ScrollView>
+                {/* Drives List */}
+                {(() => {
+                  const journeysForTab: Journey[] = selectedDrivingMemberId === "all"
+                    ? Object.values(drivingJourneyCache).flat()
+                    : (drivingJourneyCache[selectedDrivingMemberId] || []);
+                  const statsForTab = selectedDrivingMemberId !== "all" && drivingBatchStatsCache[selectedDrivingMemberId]
+                    ? drivingBatchStatsCache[selectedDrivingMemberId]
+                    : (() => {
+                        let totalMeters = 0, topSpeed = 0, driveCount = 0;
+                        journeysForTab.filter(j => !isJourneyStationary(j.history || [])).forEach(j => {
+                          const s = calcJourneyStats(j.history || []);
+                          if (s.topSpeedMph > topSpeed) topSpeed = s.topSpeedMph;
+                          totalMeters += parseFloat(s.distanceMiles) * 1609.34;
+                          driveCount++;
+                        });
+                        return { totalMiles: (totalMeters / 1609.34).toFixed(1), totalDrives: driveCount, topSpeed };
+                      })();
+                  const driveJourneys = journeysForTab.filter(j => !isJourneyStationary(j.history || []));
+                  const stayJourneys = journeysForTab.filter(j => isJourneyStationary(j.history || []));
+
+                  return (
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                      {/* Stats Row */}
+                      <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingTop: 16, paddingBottom: 8, gap: 8 }}>
+                        {[
+                          { label: "Top Speed", value: drivingLoading ? "—" : `${statsForTab.topSpeed} mph` },
+                          { label: "Total Drives", value: drivingLoading ? "—" : `${statsForTab.totalDrives}` },
+                          { label: "Total Miles", value: drivingLoading ? "—" : `${statsForTab.totalMiles} mi` },
+                        ].map(stat => (
+                          <View key={stat.label} style={{ flex: 1, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 16, fontWeight: '700', color: '#1E3A8A', marginBottom: 2 }}>{stat.value}</Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280', textAlign: 'center' }}>{stat.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Journey list */}
+                      {drivingLoading ? (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40 }}>
+                          <ActivityIndicator color={COLORS.primary} />
+                          <Text style={{ marginTop: 8, color: '#6B7280', fontSize: 14 }}>Loading journeys…</Text>
+                        </View>
+                      ) : journeysForTab.length === 0 ? (
+                        <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ width: '100%', backgroundColor: '#EFF6FF', borderRadius: 20, padding: 30, alignItems: 'center' }}>
+                            <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                              <SteeringWheelIcon color={COLORS.white} size={30} />
+                            </View>
+                            <Text style={{ fontSize: 20, fontWeight: '700', color: '#1E3A8A', marginBottom: 8 }}>No Drives Detected</Text>
+                            <Text style={{ fontSize: 14, color: COLORS.primary, textAlign: 'center', lineHeight: 20 }}>
+                              Your Circle may have turned off Drive Detection or had a low battery/poor connectivity.
+                            </Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <>
+                          {driveJourneys.length > 0 && (
+                            <>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E3A8A', flex: 1 }}>Drives ({driveJourneys.length})</Text>
+                              </View>
+                              {driveJourneys.map((journey, idx) => {
+                                const stats = calcJourneyStats(journey.history || []);
+                                return (
+                                  <View key={journey.startTime || idx} style={{ marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14 }}>
+                                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                        <Ionicons name="shuffle" size={20} color="#FFFFFF" />
+                                      </View>
+                                      <View style={{ flex: 1 }}>
+                                        <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>{stats.distanceMiles} mi Trip</Text>
+                                        <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{formatJourneyTimeRange(journey.startTime, journey.endTime)} · {getJourneyDuration(journey.startTime, journey.endTime)}</Text>
+                                      </View>
+                                    </View>
+                                    <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+                                      <JourneyMapPreview history={journey.history || []} />
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                            </>
+                          )}
+                          {stayJourneys.length > 0 && (
+                            <>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1E3A8A', flex: 1 }}>Stops ({stayJourneys.length})</Text>
+                              </View>
+                              {stayJourneys.map((journey, idx) => (
+                                <View key={journey.startTime || idx} style={{ marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFFFFF', borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14 }}>
+                                    <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#002B7F', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                      <Ionicons name="location-sharp" size={20} color="#FFFFFF" />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>{journey.history?.[0]?.name || "Stayed at Location"}</Text>
+                                      <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{formatJourneyTimeRange(journey.startTime, journey.endTime)} · {getJourneyDuration(journey.startTime, journey.endTime)}</Text>
+                                    </View>
+                                  </View>
+                                  <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+                                    <JourneyMapPreview history={journey.history || []} />
+                                  </View>
+                                </View>
+                              ))}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </ScrollView>
+                  );
+                })()}
               </View>
             ) : null}
 
@@ -8106,10 +8413,8 @@ const MapScreen: React.FC = () => {
           </TouchableOpacity>
         </Modal>
 
-        {/* --- MEMBER JOURNEYS MODAL --- */}
-        {/* MemberJourneysModal removed */}
 
-        {/* Startup Loading Overlay */}
+{/* Startup Loading Overlay */}
         {startupStatus && (
           <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]}>
             <StartupLoading status={startupStatus} progress={startupProgress} />
@@ -8174,12 +8479,6 @@ const MapScreen: React.FC = () => {
           }}
         />
 
-        <MemberJourneysModal
-          isOpen={isMemberJourneysModalOpen}
-          onClose={() => setIsMemberJourneysModalOpen(false)}
-          circleId={selectedCircle?.id}
-          memberId={selectedMemberForJourneys}
-        />
 
         <SettingsModal
           isOpen={isSettingsModalOpen}

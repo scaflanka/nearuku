@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.nearu.appt",
+      "bundleIdentifier": "com.nearu.appt.ios",
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "infoPlist": {

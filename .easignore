@@ -1,0 +1,43 @@
+# env files
+.env
+.env.local
+.env*.local
+
+# expo
+.expo/
+dist/
+web-build/
+
+# node dependencies (EAS will install these on the build server)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE/Editor settings and local caches
+.vscode/
+.idea/
+.claude/
+.git/
+.github/
+*.tsbuildinfo
+*.backup
+
+# Android files (not needed for iOS IPA builds)
+android/
+*.keystore
+*.jks
+*.apk
+*.aab
+
+# iOS local build artifacts
+ios/Pods/
+ios/build/
+*.ipa
+*.mobileprovision
+*.p12
+*.p8
+
+# Documentation and unused assets
+README.md
+APP_SHA_KEYS.txt
