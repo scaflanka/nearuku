@@ -118,7 +118,8 @@
       "expo-font",
       "expo-web-browser",
       "expo-contacts",
-      "./plugins/withBootReceiver"
+      "./plugins/withBootReceiver",
+      "./plugins/withModularHeaders"
     ],
     "experiments": {
       "typedRoutes": true,
