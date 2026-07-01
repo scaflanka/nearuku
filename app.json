@@ -119,7 +119,8 @@
       "expo-web-browser",
       "expo-contacts",
       "./plugins/withBootReceiver",
-      "./plugins/withModularHeaders"
+      "./plugins/withModularHeaders",
+      "./plugins/withMapboxPatch"
     ],
     "experiments": {
       "typedRoutes": true,
